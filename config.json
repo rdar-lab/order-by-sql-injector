@@ -1,0 +1,12 @@
+{
+        "base_url": "http://my-server",
+        "base_params": {
+                "param1": "value1"
+        },
+        "injected_param_name": "order_by_param_name",
+        "injected_param_valid_value": "good_value",
+        "time_threshold": 1,
+        "sql_search": "SELECT table_name from information_schema.tables where table_name ilike ':VAL:%' ESCAPE '\\' limit 1",
+        "sql_exact": "SELECT table_name from information_schema.tables where table_name ilike ':VAL:' ESCAPE '\\' limit 1",
+        "blacklist_prefix": "_"
+}
