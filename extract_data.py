@@ -182,8 +182,11 @@ if __name__ == '__main__':
         if _CONFIG_SQL_ACTIVATION in _config:
             _logger.info("Running activation SQL")
             _call_with_value(_config, '', False, True)
-        data = _extract_data(_config)
-        print()
-        _logger.info("Detected values: {}".format(data))
+        if _CONFIG_SQL_SEARCH in _config:
+            data = _extract_data(_config)
+            print()
+            _logger.info("Detected values: {}".format(data))
+        else:
+            _logger.info("No search defined")
     except Exception:
         _logger.exception("Error")
