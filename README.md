@@ -10,6 +10,11 @@ The methods that are used are described here: \
 https://pulsesecurity.co.nz/articles/postgres-sqli \
 https://www.onsecurity.io/blog/pentesting-postgresql-with-sql-injections/
 
+You can use the tool to:
+1. Extract data from the DB using side channel attack (time based)
+2. Extract OS files from DB
+3. Write files to the DB
+
 ## Usage
 
 1. Update the `config.json` file with the necessary details, look at the code from more options
