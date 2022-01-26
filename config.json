@@ -5,8 +5,9 @@
         },
         "injected_param_name": "order_by_param_name",
         "injected_param_valid_value": "good_value",
-        "time_threshold": 1,
-        "sql_search": "SELECT table_name from information_schema.tables where table_name ilike ':VAL:%' ESCAPE '\\' limit 1",
-        "sql_exact": "SELECT table_name from information_schema.tables where table_name ilike ':VAL:' ESCAPE '\\' limit 1",
-        "blacklist_prefix": "_"
+        "time_threshold": 0.5,
+        "sql_search": "SELECT table_name from information_schema.tables where table_name ilike :VAL: ESCAPE '\\' limit 1",
+        "sql_exact": "SELECT table_name from information_schema.tables where table_name ilike :VAL: ESCAPE '\\' limit 1",
+        "blacklist_prefix": "_",
+        "escape_value": true
 }

