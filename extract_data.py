@@ -128,8 +128,10 @@ def _extract_data(config):
     if last_resort_chars is not None:
         search_chars = search_chars + last_resort_chars
 
-    inner_exact = config.get(_CONFIG_SQL_EXACT, None)
     inner_search = config.get(_CONFIG_SQL_SEARCH, None)
+    inner_exact = config.get(_CONFIG_SQL_EXACT, None)
+    if inner_exact is None:
+        inner_exact = inner_search
 
     detected_prefixes = ['']
     logging.info("Starting search...")
