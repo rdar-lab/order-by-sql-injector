@@ -6,5 +6,9 @@
         "injected_param_name": "order_by_param_name",
         "injected_param_valid_value": "good_value",
         "time_threshold": 0.5,
-        "sql_activation": "SELECT lo_import('/etc/passwd') union all SELECT lo_export((select loid from pg_largeobject limit 1),'/tmp/testing')"
+        "sql_activation": [
+                "select lo_unlink(loid) from pg_largeobject",
+                "SELECT lo_from_bytea(0,'this is a test file with test bytes')",
+                "SELECT lo_export((select loid from pg_largeobject limit 1),'/tmp/testing')"
+        ]
 }

