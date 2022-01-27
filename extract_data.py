@@ -2,6 +2,7 @@ import copy
 import json
 import logging
 import string
+import sys
 import time
 
 import requests
@@ -53,8 +54,8 @@ _CONFIG_ENCODE_VALUE = "encode_value"
 _CONFIG_DEFAULT_ENCODE_VALUE = False
 
 
-def _read_configurations():
-    with open('config.json') as file:
+def _read_configurations(file_name):
+    with open(file_name) as file:
         return json.load(file)
 
 
@@ -198,7 +199,13 @@ if __name__ == '__main__':
     try:
         logging.basicConfig(level=logging.INFO)
         _logger.info("Reading configurations")
-        _config = _read_configurations()
+
+        if len(sys.argv) > 1:
+            config_file_name = sys.argv[1]
+        else:
+            config_file_name = 'config.json'
+
+        _config = _read_configurations(config_file_name)
         _logger.info("Configuration: {}".format(_config))
         _sanity_call(_config)
         if _CONFIG_SQL_ACTIVATION in _config:
