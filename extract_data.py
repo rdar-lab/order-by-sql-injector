@@ -141,7 +141,7 @@ def _call_with_value(config, search_value, prefix, char, index, is_exact, is_act
         .replace(':PREFIX:', prefix) \
         .replace(':CHR:', char) \
         .replace(':IDX:', str(index)) \
-        .replace(':NXT:', str(index+1))
+        .replace(':NXT:', str(index + 1))
 
     return _call(config, value, time_threshold=time_threshold)
 
@@ -185,7 +185,17 @@ def _extract_data(config):
 
                 _logger.debug("Checking {}".format(prefix + ch))
 
-                print('\r' + prefix + ch, end='')
+                print_message = prefix
+                if single_value:
+                    if '\n' in print_message:
+                        print_message = print_message[print_message.rindex('\n') + 1:]
+
+                print_message = print_message + ch
+
+                if not single_value:
+                    print_message = print_message.replace('\n', '\\n')
+
+                print('\r' + print_message, end='')
 
                 is_correct = _call_with_value(config, prefix + ch, prefix, ch, len(prefix) + 1, False, False)
 
